@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+DELAY="1"
+while getopts ":d:" opt; do
+	case $opt in
+		d)
+			DELAY="$OPTARG"
+			;;
+		:)
+			echo "-$OPTARG needs an argument..." >&2
+			exit 2
+			;;
+		\?)
+			echo "What's -$OPTARG?" >&2
+			exit 2
+			;;
+	esac
+done
+
+SOURCE="${@:$OPTIND:1}"
+DEST="${@:$OPTIND+1:1}"
+
+if [ -z "$SOURCE" ] || [ -z "$DEST" ]; then
+	echo "usage: $0 [-d milliseconds] source-name sink-name"
+fi
+
+echo "Patching $SOURCE to $DEST with $DELAY ms of delay."
+
+TOOL=$(which pv)
+if [[ $? != 0 ]]; then
+	TOOL=$(which cat)
+	echo "If you had pv installed, you could see the rate of the audio being patched."
+fi
+
+PACAT=$(which pacat)
+if [[ $? != 0 ]]; then
+	echo "I need pacat to be able to do anything!"
+	exit 3
+fi
+
+#do it!
+$PACAT -r --latency-msec=1 -d $SOURCE | $TOOL | $PACAT -p --latency-msec=$DELAY -d $DEST
+
